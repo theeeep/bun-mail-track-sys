@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { v4 as uuid } from "uuid";
+import Track from "../model/track.model";
+import { sendMail } from "../utils/sendMail";
 
 const app = new Hono();
 
@@ -13,12 +15,22 @@ app.post("/send-mail", async (c) => {
 
 	// Password validation
 	if (password !== Bun.env.MAIL_PASSWORD) {
-		return c.json({ message: "Invalid password" }, 401);
+		return c.json({ message: "Invalid email password" }, 401);
 	}
 
 	// tracking id, data store in db
+	const trackingId = uuid();
 
-	return c.json({ message: "Emails sent successfully" }, 200);
+	try {
+		await Track.create({ trackingId });
+		await sendMail(emails, trackingId);
+		return c.json({
+			message: "Emails sent successfully",
+			TrackingId: trackingId,
+		});
+	} catch (error) {
+		return c.json({ message: "Error creating track" }, 500);
+	}
 });
 
 export default app;
